@@ -219,13 +219,13 @@ class AsciiRegistry(object):
 
         else:
 
-            uuid = om.MUuid().asString()
+            uuid = om.MUuid().generate().asString()
 
         # Iterate until UUID is truly unique
         #
         while self.hasUUID(uuid):
 
-            uuid = om.MUuid().asString()
+            uuid = om.MUuid().generate().asString()
 
         return uuid
 

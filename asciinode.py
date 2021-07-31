@@ -1,3 +1,5 @@
+import maya.api.OpenMaya as om
+
 from . import asciitreemixin, asciiattribute, asciiplug
 from .collections import hashtable, weakreflist, notifylist
 
@@ -68,7 +70,7 @@ class AsciiNode(asciitreemixin.AsciiTreeMixin):
         self.parent = kwargs.get('parent', None)
         self.name = kwargs.get('name', '')
         self.namespace = kwargs.get('namespace', '')
-        self.uuid = kwargs.get('uuid', '')
+        self.uuid = kwargs.get('uuid', om.MUuid().generate().asString())
 
         # Initialize node attributes
         #
