@@ -1,6 +1,7 @@
 from maya.api import OpenMaya as om
-from mason import asciitreemixin, asciiargparser, asciidata
-from mason.collections import hashtable, weakreflist, notifylist
+
+from . import asciitreemixin, asciiargparser, asciidata
+from .collections import hashtable, weakreflist, notifylist
 
 import logging
 logging.basicConfig()

@@ -3,8 +3,8 @@ import ast
 import numpy
 
 from maya import cmds as mc
-from mason import asciibase
-from mason.asciiplug import AsciiPlugType
+from . import asciibase
+from .asciiplug import AsciiPlugType
 
 import logging
 logging.basicConfig()

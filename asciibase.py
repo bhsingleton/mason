@@ -2,7 +2,7 @@ import re
 import weakref
 
 from abc import ABCMeta, abstractmethod
-from mason.decorators import classproperty
+from .decorators import classproperty
 
 import logging
 logging.basicConfig()

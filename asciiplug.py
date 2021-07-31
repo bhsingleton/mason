@@ -4,8 +4,8 @@ from enum import IntEnum
 from itertools import chain
 from collections import namedtuple
 
-from mason import asciitreemixin, asciiattribute, asciidata
-from mason.collections import sparsearray
+from . import asciitreemixin, asciiattribute, asciidata
+from .collections import sparsearray
 
 import logging
 logging.basicConfig()

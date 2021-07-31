@@ -5,7 +5,7 @@ from maya.api import OpenMaya as om
 from datetime import datetime
 from collections import deque, namedtuple, defaultdict
 
-from mason import asciibase, asciiargparser, asciinode
+from . import asciibase, asciiargparser, asciinode
 
 import logging
 logging.basicConfig()

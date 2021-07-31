@@ -4,7 +4,7 @@ import maya.api.OpenMaya as om
 from abc import ABCMeta, abstractmethod
 from collections import deque
 from itertools import islice
-from mason import asciibase
+from . import asciibase
 
 import logging
 logging.basicConfig()

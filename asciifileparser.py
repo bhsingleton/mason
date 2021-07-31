@@ -1,5 +1,5 @@
-from mason import asciiscene, asciiargparser, asciiattribute, asciiplug, asciidata
-from mason.decorators import timer
+from . import asciiscene, asciiargparser, asciiattribute, asciiplug, asciidata
+from .decorators import timer
 
 import logging
 logging.basicConfig()

@@ -1,7 +1,7 @@
 import os
 import shutil
 
-from mason import asciifileparser
+from . import asciifileparser
 
 import logging
 logging.basicConfig()

@@ -1,7 +1,7 @@
 from abc import ABCMeta, abstractmethod
 from collections import deque
 
-from mason import asciibase
+from . import asciibase
 
 import logging
 logging.basicConfig()

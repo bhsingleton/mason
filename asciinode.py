@@ -1,5 +1,5 @@
-from mason import asciitreemixin, asciiattribute, asciiplug
-from mason.collections import hashtable, weakreflist, notifylist
+from . import asciitreemixin, asciiattribute, asciiplug
+from .collections import hashtable, weakreflist, notifylist
 
 import logging
 logging.basicConfig()
