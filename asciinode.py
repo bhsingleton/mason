@@ -37,7 +37,7 @@ class AsciiNode(asciitreemixin.AsciiTreeMixin):
         Private method called after a new instance is created.
 
         :type typeName: str
-        :keyword scene: asciiscene.AsciiScene
+        :key scene: asciiscene.AsciiScene
         :rtype: None
         """
 

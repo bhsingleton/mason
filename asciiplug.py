@@ -43,8 +43,8 @@ class AsciiPlug(asciitreemixin.AsciiTreeMixin):
 
         :type node: asciinode.AsciiNode
         :type attribute: asciiattribute.AsciiAttribute
-        :keyword parent: weakref.ref
-        :keyword index: int
+        :key parent: weakref.ref
+        :key index: int
         :rtype: None
         """
 
@@ -169,10 +169,10 @@ class AsciiPlug(asciitreemixin.AsciiTreeMixin):
         """
         Returns a partial name for this plug.
 
-        :keyword includeNodeName: bool
-        :keyword includeIndices: bool
-        :keyword useFullAttributePath: bool
-        :keyword useLongNames: bool
+        :key includeNodeName: bool
+        :key includeIndices: bool
+        :key useFullAttributePath: bool
+        :key useLongNames: bool
         :rtype: str
         """
 
