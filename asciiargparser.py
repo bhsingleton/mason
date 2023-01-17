@@ -12,6 +12,9 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
+__states__ = {'on': True, 'yes': True, 'true': True}
+
+
 def state(value):
     """
     Evaluates the state string and converts it to a boolean.
@@ -20,7 +23,7 @@ def state(value):
     :rtype: bool
     """
 
-    return value in ('yes', 'on', 'true')
+    return __states__[value.lower()]
 
 
 class AsciiFlagParser(asciibase.AsciiBase):
@@ -28,6 +31,7 @@ class AsciiFlagParser(asciibase.AsciiBase):
     Ascii class used to translate command flags.
     """
 
+    # region Dunderscores
     __slots__ = ('shortName', 'longName', 'dataType', 'multiUse')
 
     __datatypes__ = {
@@ -70,7 +74,9 @@ class AsciiFlagParser(asciibase.AsciiBase):
         else:
 
             pass
+    # endregion
 
+    # region Methods
     def hasValue(self):
         """
         Evaluates whether this flag expects a value.
@@ -115,6 +121,7 @@ class AsciiFlagParser(asciibase.AsciiBase):
         else:
 
             return self.dataType(value)
+    # endregion
 
 
 class AsciiArgParser(asciibase.AsciiBase):
@@ -124,6 +131,7 @@ class AsciiArgParser(asciibase.AsciiBase):
     All arguments are dequoted at runtime.
     """
 
+    # region Dunderscores
     __slots__ = ('_name', 'syntax', 'arguments', 'flags')
     __syntax__ = {}
     __quotation__ = '"'
@@ -252,7 +260,9 @@ class AsciiArgParser(asciibase.AsciiBase):
         """
 
         return self.numArguments + self.numFlags
+    # endregion
 
+    # region Properties
     @property
     def command(self):
         """
@@ -311,6 +321,28 @@ class AsciiArgParser(asciibase.AsciiBase):
         #
         self.syntax = self.getSyntax(name)
 
+    @property
+    def numArguments(self):
+        """
+        Getter method that evaluates the number of arguments.
+
+        :rtype: int
+        """
+
+        return len(self.arguments)
+
+    @property
+    def numFlags(self):
+        """
+        Getter method that evaluates the number of flags.
+
+        :rtype: int
+        """
+
+        return len(self.flags)
+    # endregion
+
+    # region Methods
     @classmethod
     def split(cls, line):
         """
@@ -413,16 +445,6 @@ class AsciiArgParser(asciibase.AsciiBase):
         else:
 
             return []
-
-    @property
-    def numArguments(self):
-        """
-        Getter method that evaluates the number of arguments.
-
-        :rtype: int
-        """
-
-        return len(self.arguments)
 
     def asString(self, index):
         """
@@ -544,16 +566,6 @@ class AsciiArgParser(asciibase.AsciiBase):
         cls.__syntax__[command] = syntax
         return syntax
 
-    @property
-    def numFlags(self):
-        """
-        Getter method that evaluates the number of flags.
-
-        :rtype: int
-        """
-
-        return len(self.flags)
-
     @classmethod
     def isFlag(cls, item):
         """
@@ -616,3 +628,4 @@ class AsciiArgParser(asciibase.AsciiBase):
         else:
 
             return value
+    # endregion
