@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+from six import with_metaclass
 from collections import deque
 
 from . import asciibase
@@ -9,13 +10,13 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class AsciiTreeMixin(asciibase.AsciiBase):
+class AsciiTreeMixin(with_metaclass(ABCMeta, asciibase.AsciiBase)):
     """
     Overload of AsciiBase used to outline parent/child behaviour.
     """
 
+    # region Dunderscores
     __slots__ = ()
-    __metaclass__ = ABCMeta
 
     def __init__(self, *args, **kwargs):
         """
@@ -73,7 +74,9 @@ class AsciiTreeMixin(asciibase.AsciiBase):
         """
 
         return self.numberOfChildren
+    # endregion
 
+    # region Properties
     @property
     @abstractmethod
     def parent(self):
@@ -85,6 +88,49 @@ class AsciiTreeMixin(asciibase.AsciiBase):
 
         pass
 
+    @property
+    def isLeaf(self):
+        """
+        Getter method that evaluates if this is a leaf attribute.
+
+        :rtype: bool
+        """
+
+        return self.numberOfChildren == 0
+
+    @property
+    def isChild(self):
+        """
+        Getter method that evaluates whether this object is a child.
+
+        :rtype: bool
+        """
+
+        return self.parent is not None
+
+    @property
+    @abstractmethod
+    def children(self):
+        """
+        Getter method that returns the children for this object.
+
+        :rtype: list[AsciiTreeMixin]
+        """
+
+        pass
+
+    @property
+    def numberOfChildren(self):
+        """
+        Getter method that evaluates the number of children belonging to this object.
+
+        :rtype: int
+        """
+
+        return len(self.children)
+    # endregion
+
+    # region Methods
     def iterParents(self):
         """
         Returns a generator that can iterate over all of the parents relative to this object.
@@ -140,27 +186,6 @@ class AsciiTreeMixin(asciibase.AsciiBase):
 
         return reversed(list(self.home()))
 
-    @property
-    @abstractmethod
-    def children(self):
-        """
-        Getter method that returns the children for this object.
-
-        :rtype: list[AsciiTreeMixin]
-        """
-
-        pass
-
-    @property
-    def numberOfChildren(self):
-        """
-        Getter method that evaluates the number of children belonging to this object.
-
-        :rtype: int
-        """
-
-        return len(self.children)
-
     def iterChildren(self):
         """
         Returns a generator that can iterate over all the children relative to this object.
@@ -186,26 +211,6 @@ class AsciiTreeMixin(asciibase.AsciiBase):
 
             queue.extend(child.children)
 
-    @property
-    def isLeaf(self):
-        """
-        Getter method that evaluates if this is a leaf attribute.
-
-        :rtype: bool
-        """
-
-        return self.numberOfChildren == 0
-
-    @property
-    def isChild(self):
-        """
-        Getter method that evaluates whether this object is a child.
-
-        :rtype: bool
-        """
-
-        return self.parent is not None
-
     def hasChild(self, child):
         """
         Evaluates whether or not the supplied child belongs to this attribute.
@@ -224,3 +229,4 @@ class AsciiTreeMixin(asciibase.AsciiBase):
         """
 
         return len(list(self.home()))
+    # endregion

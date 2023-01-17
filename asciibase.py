@@ -2,6 +2,7 @@ import re
 import weakref
 
 from abc import ABCMeta, abstractmethod
+from six import with_metaclass
 from .decorators import classproperty
 
 import logging
@@ -10,13 +11,13 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class AsciiBase(object):
+class AsciiBase(with_metaclass(ABCMeta, object)):
     """
     Abstract base class used for all Ascii objects.
     """
 
+    # region Dunderscores
     __slots__ = ('__weakref__',)
-    __metaclass__ = ABCMeta
 
     def __init__(self, *args, **kwargs):
         """
@@ -35,7 +36,31 @@ class AsciiBase(object):
         """
 
         return self.hashCode()
+    # endregion
 
+    # region Properties
+    @classproperty
+    def className(cls):
+        """
+        Getter method that returns a null weak reference.
+
+        :rtype: lambda
+        """
+
+        return cls.__name__
+
+    @classproperty
+    def nullWeakReference(self):
+        """
+        Getter method that returns a null weak reference.
+
+        :rtype: lambda
+        """
+
+        return lambda: None
+    # endregion
+
+    # region Methods
     def hashCode(self):
         """
         Returns a hashable value for this instance.
@@ -53,16 +78,6 @@ class AsciiBase(object):
         """
 
         return weakref.ref(self)
-
-    @classproperty
-    def nullWeakReference(self):
-        """
-        Getter method that returns a null weak reference.
-
-        :rtype: lambda
-        """
-
-        return lambda: None
 
     @classmethod
     def splitName(cls, name):
@@ -125,3 +140,4 @@ class AsciiBase(object):
         name = cls.stripNamespace(name)
 
         return name
+    # endregion
