@@ -16,6 +16,7 @@ class AsciiAttribute(asciitreemixin.AsciiTreeMixin):
     It also helps when it comes time to serialize the addAttr commands.
     """
 
+    # region Dunderscores
     __slots__ = (
         '_parent',
         '_children',
@@ -66,13 +67,24 @@ class AsciiAttribute(asciitreemixin.AsciiTreeMixin):
 
     def __str__(self):
         """
+        Private method that stringifies this instance.
+
+        :rtype: str
+        """
+
+        return self.longName
+
+    def __repr__(self):
+        """
         Private method that returns a string representation of this instance.
 
         :rtype: str
         """
 
-        return f'<{self.__class__.__module__}.{self.__class__.__name__} object: {self.longName}>'
+        return f'<{self.className}:{self.longName} @ {self.hashCode()}>'
+    # endregion
 
+    # region Properties
     @property
     def parent(self):
         """
@@ -119,27 +131,6 @@ class AsciiAttribute(asciitreemixin.AsciiTreeMixin):
         #
         self.parentChanged(oldParent, parent)
 
-    def parentChanged(self, oldParent, newParent):
-        """
-        Callback method that cleans up any parent/child references.
-
-        :type oldParent: AsciiObject
-        :type newParent: AsciiObject
-        :rtype: None
-        """
-
-        # Remove self from former parent
-        #
-        if oldParent is not None:
-
-            oldParent.children.remove(self)
-
-        # Append self to new parent
-        #
-        if newParent is not None:
-
-            newParent.children.appendIfUnique(self)
-
     @property
     def children(self):
         """
@@ -149,27 +140,6 @@ class AsciiAttribute(asciitreemixin.AsciiTreeMixin):
         """
 
         return self._children
-
-    def childAdded(self, index, child):
-        """
-        Adds a reference to this object to the supplied child.
-
-        :type index: int
-        :type child: AsciiNode
-        :rtype: None
-        """
-
-        child.parent = self
-
-    def childRemoved(self, child):
-        """
-        Removes the reference of this object from the supplied child.
-
-        :type child: AsciiNode
-        :rtype: None
-        """
-
-        child.parent = None
 
     @property
     def longName(self):
@@ -701,6 +671,50 @@ class AsciiAttribute(asciitreemixin.AsciiTreeMixin):
         """
 
         return self.hasMinValue or self.hasMaxValue
+    # endregion
+
+    # region Methods
+    def parentChanged(self, oldParent, newParent):
+        """
+        Callback method that cleans up any parent/child references.
+
+        :type oldParent: AsciiObject
+        :type newParent: AsciiObject
+        :rtype: None
+        """
+
+        # Remove self from former parent
+        #
+        if oldParent is not None:
+
+            oldParent.children.remove(self)
+
+        # Append self to new parent
+        #
+        if newParent is not None:
+
+            newParent.children.appendIfUnique(self)
+
+    def childAdded(self, index, child):
+        """
+        Adds a reference to this object to the supplied child.
+
+        :type index: int
+        :type child: AsciiNode
+        :rtype: None
+        """
+
+        child.parent = self
+
+    def childRemoved(self, child):
+        """
+        Removes the reference of this object from the supplied child.
+
+        :type child: AsciiNode
+        :rtype: None
+        """
+
+        child.parent = None
 
     def update(self, items):
         """
@@ -745,9 +759,10 @@ class AsciiAttribute(asciitreemixin.AsciiTreeMixin):
         """
 
         return self._parser.toString()
+    # endregion
 
 
-def listPlugin(typeName):
+def listPluginAttributes(typeName):
     """
     Returns a list of static attributes that belong to the given node type.
 

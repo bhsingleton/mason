@@ -1,7 +1,8 @@
 import numpy
-import maya.api.OpenMaya as om
 
+from maya.api import OpenMaya as om
 from abc import ABCMeta, abstractmethod
+from six import with_metaclass
 from collections import deque
 from itertools import islice
 from . import asciibase
@@ -12,20 +13,20 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class AsciiData(asciibase.AsciiBase):
+class AsciiData(with_metaclass(ABCMeta, asciibase.AsciiBase)):
     """
     Ascii class used to interface with user data.
     """
 
-    __slots__ = ('__attribute__', '__value__')
-    __metaclass__ = ABCMeta
+    # region Dunderscores
+    __slots__ = ('__value__', '__plug__')
     __default__ = None
 
-    def __init__(self, attribute, **kwargs):
+    def __init__(self, plug, **kwargs):
         """
         Private method called after a new instance is created.
 
-        :type attribute: asciiattribute.AsciiAttribute
+        :type plug: asciiplug.AsciiPlug
         :rtype: None
         """
 
@@ -35,21 +36,30 @@ class AsciiData(asciibase.AsciiBase):
 
         # Declare class variables
         #
-        self.__attribute__ = attribute.weakReference()
         self.__value__ = self.creator()
+        self.__plug__ = plug.weakReference()
 
     def __str__(self):
         """
-        Private method that returns the string representation of this object.
+        Private method that stringifies this instance.
 
         :rtype: str
         """
 
-        return f'<{self.__class__.__module__}.{self.__class__.__name__} object: {self.__value__}>'
+        return str(self.__value__)
+
+    def __repr__(self):
+        """
+        Private method that stringifies this instance.
+
+        :rtype: str
+        """
+
+        return repr(self.__value__)
 
     @classmethod
     @abstractmethod
-    def __readascii__(cls, strings):
+    def __readascii__(self, value):
         """
         Returns the python equivalent of this ascii string.
 
@@ -60,7 +70,7 @@ class AsciiData(asciibase.AsciiBase):
 
     @classmethod
     @abstractmethod
-    def __writeascii__(cls, value):
+    def __writeascii__(self, value):
         """
         Returns the ascii equivalent of this python object.
 
@@ -69,15 +79,28 @@ class AsciiData(asciibase.AsciiBase):
 
         pass
 
+    # endregion
+
+    # region properties
+    @property
+    def plug(self):
+        """
+        Getter method that returns the plug associated with this datablock.
+
+        :rtype: mason.asciiplug.AsciiPlug
+        """
+
+        return self.__plug__()
+
     @property
     def attribute(self):
         """
-        Getter method that returns the attribute associated with this data type.
+        Getter method that returns the attribute associated with this datablock.
 
         :rtype: mason.asciiattribute.AsciiAttribute
         """
 
-        return self.__attribute__()
+        return self.plug.attribute
 
     @property
     def defaultValue(self):
@@ -95,8 +118,10 @@ class AsciiData(asciibase.AsciiBase):
         else:
 
             return self.__default__
+    # endregion
 
-    def creator(self):
+    # region Methods
+    def create(self):
         """
         Returns a new value to be entered into this data block.
 
@@ -162,6 +187,7 @@ class AsciiData(asciibase.AsciiBase):
         """
 
         return self.__writeascii__(self.get())
+    # endregion
 
 
 class AsciiGeneric(AsciiData):
@@ -180,10 +206,9 @@ class AsciiGeneric(AsciiData):
         return ''
 
 
-class AsciiNumber(AsciiData):
+class AsciiNumber(with_metaclass(ABCMeta, AsciiData)):
 
     __slots__ = ()
-    __metaclass__ = ABCMeta
     __dtype__ = None
 
     @classmethod
@@ -200,13 +225,14 @@ class AsciiNumber(AsciiData):
 class AsciiBool(AsciiNumber):
 
     __slots__ = ()
+    __states__ = {'on': True, 'yes': True, 'true': True}
     __dtype__ = bool
     __default__ = False
 
     @classmethod
     def __readascii__(cls, strings):
 
-        return [x in ('on', 'yes', 'true') for x in strings]
+        return [cls.__states__[string.lower()] for string in strings]
 
     @classmethod
     def __writeascii__(cls, value):
@@ -224,7 +250,6 @@ class AsciiInt(AsciiNumber):
 class AsciiInt2(AsciiData):
 
     __slots__ = ()
-    __metaclass__ = ABCMeta
 
     @classmethod
     def __readascii__(cls, strings):
@@ -235,7 +260,6 @@ class AsciiInt2(AsciiData):
 class AsciiInt3(AsciiData):
 
     __slots__ = ()
-    __metaclass__ = ABCMeta
 
     @classmethod
     def __readascii__(cls, strings):
@@ -253,7 +277,6 @@ class AsciiFloat(AsciiNumber):
 class AsciiFloat2(AsciiData):
 
     __slots__ = ()
-    __metaclass__ = ABCMeta
 
     @classmethod
     def __readascii__(cls, strings):
@@ -264,7 +287,6 @@ class AsciiFloat2(AsciiData):
 class AsciiFloat3(AsciiData):
 
     __slots__ = ()
-    __metaclass__ = ABCMeta
 
     @classmethod
     def __readascii__(cls, strings):
@@ -275,7 +297,6 @@ class AsciiFloat3(AsciiData):
 class AsciiFloat4(AsciiData):
 
     __slots__ = ()
-    __metaclass__ = ABCMeta
 
     @classmethod
     def __readascii__(cls, strings):

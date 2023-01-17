@@ -12,6 +12,7 @@ class AsciiFileParser(object):
     Ascii file parser designed to pass command lines into a tree builder.
     """
 
+    # region Dunderscores
     __slots__ = ('filePath', 'scene')
     __comment__ = '//'
     __delimiter__ = ';'
@@ -33,7 +34,8 @@ class AsciiFileParser(object):
         #
         self.filePath = filePath
         self.scene = asciiscene.AsciiScene(self.filePath)
-
+        self.__parse__()
+        '''
         # Parse file
         #
         try:
@@ -43,7 +45,8 @@ class AsciiFileParser(object):
         except Exception as exception:
 
             log.error(exception)
-    
+
+        '''
     @timer
     def __parse__(self, *args, **kwargs):
         """
@@ -106,7 +109,9 @@ class AsciiFileParser(object):
         # Notify user
         #
         log.info('%s[EOF]' % self.filePath)
+    # endregion
 
+    # region Methods
     def file(self, parser):
         """
         Delegate for file commands.
@@ -363,3 +368,4 @@ class AsciiFileParser(object):
         """
 
         self.scene.relationships.append(parser)
+    # endregion

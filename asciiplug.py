@@ -20,10 +20,10 @@ class AsciiPlug(asciitreemixin.AsciiTreeMixin):
     Editing the child arrays will result in unpredictable behaviour!
     """
 
+    # region Dunderscores
     __slots__ = (
         '_node',
         '_attribute',
-        '_index',
         '_index',
         '_parent',
         '_elements',
@@ -59,6 +59,7 @@ class AsciiPlug(asciitreemixin.AsciiTreeMixin):
         self._index = kwargs.get('index', None)
         self._parent = kwargs.get('parent', self.nullWeakReference)
         self._children = []
+        self._dataBlock = None
         self._locked = False
         self._keyable = attribute.keyable
         self._channelBox = attribute.channelBox
@@ -78,19 +79,25 @@ class AsciiPlug(asciitreemixin.AsciiTreeMixin):
         else:
 
             dataType = asciidata.getDataType(attribute)
-
-            if dataType is not None:
-
-                self._dataBlock = dataType(attribute)
+            self._dataBlock = dataType(attribute) if callable(dataType) else None
 
     def __str__(self):
+        """
+        Private method that stringifies this instance.
+
+        :rtype: str
+        """
+
+        return self.name
+
+    def __repr__(self):
         """
         Private method that returns a string representation of this instance.
 
         :rtype: str
         """
 
-        return f'<{self.__class__.__module__}.{self.__class__.__name__} object: {self.name}>'
+        return f'<{self.className}:{self.name} @ {self.hashCode()}>'
 
     def __getitem__(self, key):
         """
@@ -134,7 +141,9 @@ class AsciiPlug(asciitreemixin.AsciiTreeMixin):
         else:
 
             raise IndexError(f'__getitem__() expects either an int or str ({type(key).__name__} given)!')
+    # endregion
 
+    # region Properties
     @property
     def node(self):
         """
@@ -164,85 +173,6 @@ class AsciiPlug(asciitreemixin.AsciiTreeMixin):
         """
 
         return self.partialName(includeNodeName=True, includeIndices=True, useFullAttributePath=True, useLongNames=True)
-
-    def partialName(self, **kwargs):
-        """
-        Returns a partial name for this plug.
-
-        :key includeNodeName: bool
-        :key includeIndices: bool
-        :key useFullAttributePath: bool
-        :key useLongNames: bool
-        :rtype: str
-        """
-
-        # Check if full path should be generated
-        #
-        includeNodeName = kwargs.get('includeNodeName', False)
-        includeIndices = kwargs.get('includeIndices', False)
-        useFullAttributePath = kwargs.get('useFullAttributePath', False)
-        useLongNames = kwargs.get('useLongNames', False)
-
-        name = ''
-
-        if useFullAttributePath:
-
-            # Evaluate plug path
-            #
-            plugs = list(self.trace())
-            numPlugs = len(plugs)
-
-            if numPlugs == 1:
-
-                return self.partialName(includeNodeName=includeNodeName, useLongNames=useLongNames)
-
-            # Iterate through path
-            #
-            lastIndex = len(plugs) - 1
-
-            for (i, plug) in enumerate(plugs):
-
-                # Check if this is an array plug
-                # We want to skip this to avoid any redundancies in child elements
-                #
-                if (plug.isArray and not plug.isElement) and i != lastIndex:
-
-                    continue
-
-                # Evaluate next portion of string
-                #
-                delimiter = '.' if len(name) > 0 else ''
-                partialName = plug.partialName(includeIndices=includeIndices, useLongNames=useLongNames)
-
-                name += f'{delimiter}{partialName}'
-
-        else:
-
-            # Check if long names should be used
-            #
-            if useLongNames:
-
-                name += f'{self.attribute.longName}'
-
-            else:
-
-                name += f'{self.attribute.shortName}'
-
-            # Check if index should be included
-            #
-            if includeIndices and self.isElement:
-
-                name += f'[{self.logicalIndex}]'
-
-        # Check if node name should be included
-        #
-        if includeNodeName:
-
-            return f'{self.node.absoluteName()}.{name}'
-
-        else:
-
-            return name
 
     @property
     def parent(self):
@@ -382,6 +312,176 @@ class AsciiPlug(asciitreemixin.AsciiTreeMixin):
 
         return self.source() is not None
 
+    @property
+    def isNonDefault(self):
+        """
+        Getter method that evaluates whether this plug has been changed.
+
+        :rtype: bool
+        """
+
+        # Evaluate plug type
+        #
+        if self.isArray and not self.isElement:
+
+            return any([x.isNonDefault for x in self._elements.values()])
+
+        elif self.isCompound:
+
+            return any([x.isNonDefault for x in self._children])
+
+        else:
+
+            return self._dataBlock.isNonDefault()
+
+    @property
+    def size(self):
+        """
+        Getter method that evaluates the number of elements belonging to this plug.
+
+        :rtype: int
+        """
+
+        return self.numElements
+
+    @size.setter
+    def size(self, size):
+        """
+        Setter method that updates the number of elements belonging to this plug.
+        No need to update the child dictionary since the elementByLogicalIndex method will handle that for us.
+
+        :type size: int
+        :rtype: None
+        """
+
+        # Check if this is an array plug
+        #
+        if self.isArray and not self.isElement:
+
+            current = self.numElements
+
+            for index in range(current, size, 1):
+                self._elements[index] = AsciiPlug(self.node, self.attribute, index=index, parent=self.weakReference())
+
+        elif self.isElement:
+
+            self.parent.size = size
+
+        else:
+
+            pass
+
+    @property
+    def logicalIndex(self):
+        """
+        Getter method that returns the index for this plug.
+
+        :rtype: int
+        """
+
+        return self._index
+
+    @property
+    def isElement(self):
+        """
+        Getter method that evaluates whether this plug represents an element.
+
+        :rtype: bool
+        """
+
+        return self.isArray and self.logicalIndex is not None
+
+    @property
+    def numElements(self):
+        """
+        Getter method that evaluated the number of elements in use.
+
+        :rtype: int
+        """
+
+        return len(self._elements)
+    # endregion
+
+    # region Methods
+    def partialName(self, **kwargs):
+        """
+        Returns a partial name for this plug.
+
+        :key includeNodeName: bool
+        :key includeIndices: bool
+        :key useFullAttributePath: bool
+        :key useLongNames: bool
+        :rtype: str
+        """
+
+        # Check if full path should be generated
+        #
+        includeNodeName = kwargs.get('includeNodeName', False)
+        includeIndices = kwargs.get('includeIndices', False)
+        useFullAttributePath = kwargs.get('useFullAttributePath', False)
+        useLongNames = kwargs.get('useLongNames', False)
+
+        name = ''
+
+        if useFullAttributePath:
+
+            # Evaluate plug path
+            #
+            plugs = list(self.trace())
+            numPlugs = len(plugs)
+
+            if numPlugs == 1:
+
+                return self.partialName(includeNodeName=includeNodeName, useLongNames=useLongNames)
+
+            # Iterate through path
+            #
+            lastIndex = len(plugs) - 1
+
+            for (i, plug) in enumerate(plugs):
+
+                # Check if this is an array plug
+                # We want to skip this to avoid any redundancies in child elements
+                #
+                if (plug.isArray and not plug.isElement) and i != lastIndex:
+
+                    continue
+
+                # Evaluate next portion of string
+                #
+                delimiter = '.' if len(name) > 0 else ''
+                partialName = plug.partialName(includeIndices=includeIndices, useLongNames=useLongNames)
+
+                name += f'{delimiter}{partialName}'
+
+        else:
+
+            # Check if long names should be used
+            #
+            if useLongNames:
+
+                name += f'{self.attribute.longName}'
+
+            else:
+
+                name += f'{self.attribute.shortName}'
+
+            # Check if index should be included
+            #
+            if includeIndices and self.isElement:
+
+                name += f'[{self.logicalIndex}]'
+
+        # Check if node name should be included
+        #
+        if includeNodeName:
+
+            return f'{self.node.absoluteName()}.{name}'
+
+        else:
+
+            return name
+
     def source(self):
         """
         Returns the source plug connected to this plug.
@@ -481,66 +581,6 @@ class AsciiPlug(asciitreemixin.AsciiTreeMixin):
 
                 self.disconnect(otherPlug)
 
-    @property
-    def isNonDefault(self):
-        """
-        Getter method that evaluates whether this plug has been changed.
-
-        :rtype: bool
-        """
-
-        # Evaluate plug type
-        #
-        if self.isArray and not self.isElement:
-
-            return any([x.isNonDefault for x in self._elements.values()])
-
-        elif self.isCompound:
-
-            return any([x.isNonDefault for x in self._children])
-
-        else:
-
-            return self._dataBlock.isNonDefault()
-
-    @property
-    def size(self):
-        """
-        Getter method that evaluates the number of elements belonging to this plug.
-
-        :rtype: int
-        """
-
-        return self.numElements
-
-    @size.setter
-    def size(self, size):
-        """
-        Setter method that updates the number of elements belonging to this plug.
-        No need to update the child dictionary since the elementByLogicalIndex method will handle that for us.
-
-        :type size: int
-        :rtype: None
-        """
-
-        # Check if this is an array plug
-        #
-        if self.isArray and not self.isElement:
-
-            current = self.numElements
-
-            for index in range(current, size, 1):
-
-                self._elements[index] = AsciiPlug(self.node, self.attribute, index=index, parent=self.weakReference())
-
-        elif self.isElement:
-
-            self.parent.size = size
-
-        else:
-
-            pass
-
     def child(self, index):
         """
         Returns a child from this plug.
@@ -573,36 +613,6 @@ class AsciiPlug(asciitreemixin.AsciiTreeMixin):
 
             raise TypeError(f'child() expects an attribute ({type(index).__name__} given)!')
 
-    @property
-    def logicalIndex(self):
-        """
-        Getter method that returns the index for this plug.
-
-        :rtype: int
-        """
-
-        return self._index
-
-    @property
-    def isElement(self):
-        """
-        Getter method that evaluates whether this plug represents an element.
-
-        :rtype: bool
-        """
-
-        return self.isArray and self.logicalIndex is not None
-
-    @property
-    def numElements(self):
-        """
-        Getter method that evaluated the number of elements in use.
-
-        :rtype: int
-        """
-
-        return len(self._elements)
-
     def getExistingArrayAttributeIndices(self):
         """
         Returns an ordered list of element indices that are currently in use.
@@ -626,7 +636,7 @@ class AsciiPlug(asciitreemixin.AsciiTreeMixin):
 
             # Check if element exists
             #
-            element = self._elements.get(index, None)
+            element = self._elements.tryGetItemByLogicalIndex(index, None)
 
             if element is None:
 
@@ -870,6 +880,7 @@ class AsciiPlug(asciitreemixin.AsciiTreeMixin):
                 command = f'\tsetAttr ".{name}" {value};'
 
             return [command]
+    # endregion
 
 
 AsciiPlugSegment = namedtuple('AsciiPlugSegment', ['attribute', 'index'])
@@ -1223,3 +1234,4 @@ class AsciiPlugPath(object):
                 continue
 
         return fullPathName
+    # endregion

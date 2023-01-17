@@ -14,6 +14,7 @@ class AsciiNode(asciitreemixin.AsciiTreeMixin):
     Overload of AsciiTreeMixin used to interface with scene nodes.
     """
 
+    # region Dunderscores
     __slots__ = (
         '_scene',
         '_name',
@@ -78,12 +79,21 @@ class AsciiNode(asciitreemixin.AsciiTreeMixin):
 
     def __str__(self):
         """
+        Private method that stringifies this instance.
+
+        :rtype: str
+        """
+
+        return self.absoluteName()
+
+    def __repr__(self):
+        """
         Private method that returns a string representation of this instance.
 
         :rtype: str
         """
 
-        return f'<{self.__class__.__module__}.{self.__class__.__name__} object: {self.absoluteName()}>'
+        return f'<{self.type}:{self.absoluteName()} @ {self.uuid}>'
 
     def __getitem__(self, key):
         """
@@ -128,7 +138,9 @@ class AsciiNode(asciitreemixin.AsciiTreeMixin):
         commands.extend(self.getSetAttrCmds())
 
         return commands
+    # endregion
 
+    # region Properties
     @property
     def scene(self):
         """
@@ -168,29 +180,6 @@ class AsciiNode(asciitreemixin.AsciiTreeMixin):
             self._name = newName
             self.nameChanged(oldName, newName)
 
-    def nameChanged(self, oldName, newName):
-        """
-        Callback method for any name changes made to this node.
-
-        :type oldName: str
-        :type newName: str
-        :rtype: None
-        """
-
-        # Remove previous name from registry
-        #
-        absoluteName = f'{self.namespace}:{oldName}'
-        hashCode = self.scene.registry.names.get(absoluteName, None)
-
-        if hashCode == self.hashCode():
-
-            del self.scene.registry.names[absoluteName]
-
-        # Append new name to registry
-        #
-        absoluteName = f'{self.namespace}:{newName}'
-        self.scene.registry.names[absoluteName] = self.hashCode()
-
     @property
     def namespace(self):
         """
@@ -220,44 +209,6 @@ class AsciiNode(asciitreemixin.AsciiTreeMixin):
             self._namespace = newNamespace
             self.namespaceChanged(oldNamespace, newNamespace)
 
-    def namespaceChanged(self, oldNamespace, newNamespace):
-        """
-        Callback method for any namespace changes made to this node.
-
-        :type oldNamespace: str
-        :type newNamespace: str
-        :rtype: None
-        """
-
-        # Remove previous name from registry
-        #
-        absoluteName = f'{oldNamespace}:{self.name}'
-        hashCode = self.scene.registry.names.get(absoluteName, None)
-
-        if hashCode == self.hashCode():
-
-            del self.scene.registry.names[absoluteName]
-
-        # Append new name to registry
-        #
-        absoluteName = f'{newNamespace}:{self.name}'
-        self.scene.registry.names[absoluteName] = self.hashCode()
-
-    def absoluteName(self):
-        """
-        Returns the bare minimum required to be a unique name.
-
-        :rtype: str
-        """
-
-        if len(self.namespace) > 0:
-
-            return f'{self.namespace}:{self.name}'
-
-        else:
-
-            return self.name
-
     @property
     def parent(self):
         """
@@ -280,7 +231,6 @@ class AsciiNode(asciitreemixin.AsciiTreeMixin):
         # Check for redundancy
         #
         if parent is self.parent:
-
             log.debug(f'{self} is already parented to: {parent}')
             return
 
@@ -308,27 +258,6 @@ class AsciiNode(asciitreemixin.AsciiTreeMixin):
         #
         self.parentChanged(oldParent, parent)
 
-    def parentChanged(self, oldParent, newParent):
-        """
-        Callback method that cleans up any parent/child references.
-
-        :type oldParent: AsciiNode
-        :type newParent: AsciiNode
-        :rtype: None
-        """
-
-        # Remove self from former parent
-        #
-        if oldParent is not None:
-
-            oldParent.children.remove(self)
-
-        # Append self to new parent
-        #
-        if newParent is not None:
-
-            newParent.children.appendIfUnique(self)
-
     @property
     def children(self):
         """
@@ -338,29 +267,6 @@ class AsciiNode(asciitreemixin.AsciiTreeMixin):
         """
 
         return self._children
-
-    def childAdded(self, index, child):
-        """
-        Adds a reference to this object to the supplied child.
-
-        :type index: int
-        :type child: AsciiNode
-        :rtype: None
-        """
-
-        if child.parent is not self:
-
-            child.parent = self
-
-    def childRemoved(self, child):
-        """
-        Removes the reference of this object from the supplied child.
-
-        :type child: AsciiNode
-        :rtype: None
-        """
-
-        child.parent = None
 
     @property
     def type(self):
@@ -401,27 +307,6 @@ class AsciiNode(asciitreemixin.AsciiTreeMixin):
             self._uuid = newUUID
             self.uuidChanged(oldUUID, newUUID)
 
-    def uuidChanged(self, oldUUID, newUUID):
-        """
-        Callback method for any namespace changes made to this node.
-
-        :type oldUUID: str
-        :type newUUID: str
-        :rtype: None
-        """
-
-        # Remove previous uuid from registry
-        #
-        hashCode = self.scene.registry.uuids.get(oldUUID, None)
-
-        if hashCode == self.hashCode():
-
-            del self.scene.registry.uuids[oldUUID]
-
-        # Append new uuid to registry
-        #
-        self.scene.registry.uuids[newUUID] = self.hashCode()
-
     @property
     def isLocked(self):
         """
@@ -453,23 +338,6 @@ class AsciiNode(asciitreemixin.AsciiTreeMixin):
 
         return self._default
 
-    def initialize(self):
-        """
-        Initializes the attributes and plugs for this node.
-
-        :rtype: None
-        """
-
-        # Check if static attributes exist
-        # If not then go ahead and initialize them
-        #
-        attributes = self.__attributes__.get(self.type)
-
-        if attributes is None:
-
-            attributes = asciiattribute.listPlugin(self.type)
-            self.__attributes__[self.type] = attributes
-
     @property
     def database(self):
         """
@@ -489,6 +357,153 @@ class AsciiNode(asciitreemixin.AsciiTreeMixin):
         """
 
         return self._plugs
+    # endregion
+
+    # region Callbacks
+    def nameChanged(self, oldName, newName):
+        """
+        Callback method for any name changes made to this node.
+
+        :type oldName: str
+        :type newName: str
+        :rtype: None
+        """
+
+        # Remove previous name from registry
+        #
+        absoluteName = f'{self.namespace}:{oldName}'
+        hashCode = self.scene.registry.names.get(absoluteName, None)
+
+        if hashCode == self.hashCode():
+
+            del self.scene.registry.names[absoluteName]
+
+        # Append new name to registry
+        #
+        absoluteName = f'{self.namespace}:{newName}'
+        self.scene.registry.names[absoluteName] = self.hashCode()
+
+    def namespaceChanged(self, oldNamespace, newNamespace):
+        """
+        Callback method for any namespace changes made to this node.
+
+        :type oldNamespace: str
+        :type newNamespace: str
+        :rtype: None
+        """
+
+        # Remove previous name from registry
+        #
+        absoluteName = f'{oldNamespace}:{self.name}'
+        hashCode = self.scene.registry.names.get(absoluteName, None)
+
+        if hashCode == self.hashCode():
+
+            del self.scene.registry.names[absoluteName]
+
+        # Append new name to registry
+        #
+        absoluteName = f'{newNamespace}:{self.name}'
+        self.scene.registry.names[absoluteName] = self.hashCode()
+
+    def uuidChanged(self, oldUUID, newUUID):
+        """
+        Callback method for any namespace changes made to this node.
+
+        :type oldUUID: str
+        :type newUUID: str
+        :rtype: None
+        """
+
+        # Remove previous uuid from registry
+        #
+        hashCode = self.scene.registry.uuids.get(oldUUID, None)
+
+        if hashCode == self.hashCode():
+
+            del self.scene.registry.uuids[oldUUID]
+
+        # Append new uuid to registry
+        #
+        self.scene.registry.uuids[newUUID] = self.hashCode()
+
+    def parentChanged(self, oldParent, newParent):
+        """
+        Callback method that cleans up any parent/child references.
+
+        :type oldParent: AsciiNode
+        :type newParent: AsciiNode
+        :rtype: None
+        """
+
+        # Remove self from former parent
+        #
+        if oldParent is not None:
+
+            oldParent.children.remove(self)
+
+        # Append self to new parent
+        #
+        if newParent is not None:
+
+            newParent.children.appendIfUnique(self)
+
+    def childAdded(self, index, child):
+        """
+        Adds a reference to this object to the supplied child.
+
+        :type index: int
+        :type child: AsciiNode
+        :rtype: None
+        """
+
+        if child.parent is not self:
+
+            child.parent = self
+
+    def childRemoved(self, child):
+        """
+        Removes the reference of this object from the supplied child.
+
+        :type child: AsciiNode
+        :rtype: None
+        """
+
+        child.parent = None
+    # endregion
+
+    # region Methods
+    def initialize(self):
+        """
+        Initializes the attributes and plugs for this node.
+
+        :rtype: None
+        """
+
+        # Check if static attributes exist
+        # If not then go ahead and initialize them
+        #
+        attributes = self.__attributes__.get(self.type)
+
+        if attributes is None:
+
+            attributes = asciiattribute.listPluginAttributes(self.type)
+            self.__attributes__[self.type] = attributes
+
+    def absoluteName(self):
+        """
+        Returns the bare minimum required to be a unique name.
+
+        :rtype: str
+        """
+
+        if len(self.namespace) > 0:
+
+            return f'{self.namespace}:{self.name}'
+
+        else:
+
+            return self.name
 
     def iterTopLevelPlugs(self):
         """
@@ -828,7 +843,6 @@ class AsciiNode(asciitreemixin.AsciiTreeMixin):
 
             # Check if destination index matters
             #
-
             if otherPlug.isElement and not otherPlug.attribute.indexMatters:
 
                 destination = otherPlug.parent.partialName(includeNodeName=True, useFullAttributePath=True, includeIndices=True)
@@ -840,3 +854,4 @@ class AsciiNode(asciitreemixin.AsciiTreeMixin):
                 commands[i] = f'connectAttr "{source}" "{destination}";'
 
         return commands
+    # endregion

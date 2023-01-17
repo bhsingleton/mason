@@ -21,6 +21,7 @@ class AsciiRegistry(object):
     Ascii container class used to lookup nodes.
     """
 
+    # region Dunderscores
     __slots__ = ('nodes', 'names', 'types', 'uuids')
 
     def __init__(self):
@@ -38,7 +39,9 @@ class AsciiRegistry(object):
         self.names = {}
         self.types = defaultdict(list)
         self.uuids = {}
+    # endregion
 
+    # region Methods
     def iterNodes(self):
         """
         Returns a generator that yields all nodes.
@@ -228,6 +231,7 @@ class AsciiRegistry(object):
             uuid = om.MUuid().generate().asString()
 
         return uuid
+    # endregion
 
 
 class AsciiScene(asciibase.AsciiBase):
@@ -237,6 +241,7 @@ class AsciiScene(asciibase.AsciiBase):
     At this time there is very little support for relationships or namespaces.
     """
 
+    # region Dunderscores
     __slots__ = (
         '_filePath',
         '_selection',
@@ -259,7 +264,6 @@ class AsciiScene(asciibase.AsciiBase):
 
         # Call parent method
         #
-        print('initializing')
         super(AsciiScene, self).__init__(**kwargs)
 
         # Declare private variables
@@ -283,12 +287,21 @@ class AsciiScene(asciibase.AsciiBase):
 
     def __str__(self):
         """
+        Private method that stringifies this instance.
+
+        :rtype: str
+        """
+
+        return self.filePath
+
+    def __repr__(self):
+        """
         Private method that returns a string representation of this instance.
 
         :rtype: str
         """
 
-        return f'<{self.__class__.__module__}.{self.__class__.__name__} object: {self.filePath}>'
+        return f'<{self.className}:{self.filename} @ {self.fileInfo["UUID"]}>'
 
     def __dumps__(self):
         """
@@ -347,7 +360,9 @@ class AsciiScene(asciibase.AsciiBase):
         commands.append(f'// End of {self.filename}')
 
         return commands
+    # endregion
 
+    # region Properties
     @property
     def filePath(self):
         """
@@ -451,7 +466,9 @@ class AsciiScene(asciibase.AsciiBase):
         """
 
         self._selection = nodes
+    # endregion
 
+    # region Methods
     def nodes(self):
         """
         Getter method that returns a list of top level nodes.
@@ -598,7 +615,7 @@ class AsciiScene(asciibase.AsciiBase):
 
         return node
 
-    def select(self, *args, replace=True):
+    def select(self, *names, replace=True):
         """
         Selects the nodes associated with the given names.
 
@@ -608,7 +625,7 @@ class AsciiScene(asciibase.AsciiBase):
 
         # Get node from name
         #
-        nodes = [self.getNodeByName(x) for x in args]
+        nodes = [self.getNodeByName(x) for x in names]
 
         if replace:
 
@@ -713,3 +730,4 @@ class AsciiScene(asciibase.AsciiBase):
         """
 
         self.saveAs(self.filePath)
+    # endregion
