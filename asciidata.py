@@ -19,14 +19,14 @@ class AsciiData(with_metaclass(ABCMeta, asciibase.AsciiBase)):
     """
 
     # region Dunderscores
-    __slots__ = ('__value__', '__plug__')
+    __slots__ = ('__attribute__', '__value__')
     __default__ = None
 
-    def __init__(self, plug, **kwargs):
+    def __init__(self, attribute, **kwargs):
         """
         Private method called after a new instance is created.
 
-        :type plug: asciiplug.AsciiPlug
+        :type attribute: asciiattribute.AsciiAttribute
         :rtype: None
         """
 
@@ -36,8 +36,8 @@ class AsciiData(with_metaclass(ABCMeta, asciibase.AsciiBase)):
 
         # Declare class variables
         #
-        self.__value__ = self.creator()
-        self.__plug__ = plug.weakReference()
+        self.__attribute__ = attribute.weakReference()
+        self.__value__ = self.defaultValue
 
     def __str__(self):
         """
@@ -59,7 +59,7 @@ class AsciiData(with_metaclass(ABCMeta, asciibase.AsciiBase)):
 
     @classmethod
     @abstractmethod
-    def __readascii__(self, value):
+    def __loads__(cls, value):
         """
         Returns the python equivalent of this ascii string.
 
@@ -70,7 +70,7 @@ class AsciiData(with_metaclass(ABCMeta, asciibase.AsciiBase)):
 
     @classmethod
     @abstractmethod
-    def __writeascii__(self, value):
+    def __dumps__(cls, value):
         """
         Returns the ascii equivalent of this python object.
 
@@ -78,20 +78,9 @@ class AsciiData(with_metaclass(ABCMeta, asciibase.AsciiBase)):
         """
 
         pass
-
     # endregion
 
     # region properties
-    @property
-    def plug(self):
-        """
-        Getter method that returns the plug associated with this datablock.
-
-        :rtype: mason.asciiplug.AsciiPlug
-        """
-
-        return self.__plug__()
-
     @property
     def attribute(self):
         """
@@ -100,7 +89,7 @@ class AsciiData(with_metaclass(ABCMeta, asciibase.AsciiBase)):
         :rtype: mason.asciiattribute.AsciiAttribute
         """
 
-        return self.plug.attribute
+        return self.__attribute__()
 
     @property
     def defaultValue(self):
@@ -121,15 +110,6 @@ class AsciiData(with_metaclass(ABCMeta, asciibase.AsciiBase)):
     # endregion
 
     # region Methods
-    def create(self):
-        """
-        Returns a new value to be entered into this data block.
-
-        :rtype: Any
-        """
-
-        return self.defaultValue
-
     def isNonDefault(self):
         """
         Evaluates whether this data has been changed.
@@ -177,7 +157,7 @@ class AsciiData(with_metaclass(ABCMeta, asciibase.AsciiBase)):
         :rtype: list[Any]
         """
 
-        return cls.__readascii__(strings)
+        return cls.__loads__(strings)
 
     def writeAscii(self):
         """
@@ -186,7 +166,7 @@ class AsciiData(with_metaclass(ABCMeta, asciibase.AsciiBase)):
         :rtype: str
         """
 
-        return self.__writeascii__(self.get())
+        return self.__dumps__(self.get())
     # endregion
 
 
@@ -196,12 +176,12 @@ class AsciiGeneric(AsciiData):
     __default__ = None
 
     @classmethod
-    def __readascii__(cls, strings):
+    def __loads__(cls, strings):
 
         return []
 
     @classmethod
-    def __writeascii__(cls, value):
+    def __dumps__(cls, value):
 
         return ''
 
@@ -212,12 +192,12 @@ class AsciiNumber(with_metaclass(ABCMeta, AsciiData)):
     __dtype__ = None
 
     @classmethod
-    def __readascii__(cls, strings):
+    def __loads__(cls, strings):
 
         return numpy.array(strings, dtype=cls.__dtype__).tolist()
 
     @classmethod
-    def __writeascii__(cls, value):
+    def __dumps__(cls, value):
 
         return str(value)
 
@@ -230,12 +210,12 @@ class AsciiBool(AsciiNumber):
     __default__ = False
 
     @classmethod
-    def __readascii__(cls, strings):
+    def __loads__(cls, strings):
 
-        return [cls.__states__[string.lower()] for string in strings]
+        return [cls.__states__.get(string.lower(), False) for string in strings]
 
     @classmethod
-    def __writeascii__(cls, value):
+    def __dumps__(cls, value):
 
         return str(value).lower()
 
@@ -252,7 +232,7 @@ class AsciiInt2(AsciiData):
     __slots__ = ()
 
     @classmethod
-    def __readascii__(cls, strings):
+    def __loads__(cls, strings):
 
         return numpy.array(strings, dtype=int).reshape(-1, 2).tolist()
 
@@ -262,7 +242,7 @@ class AsciiInt3(AsciiData):
     __slots__ = ()
 
     @classmethod
-    def __readascii__(cls, strings):
+    def __loads__(cls, strings):
 
         return numpy.array(strings, dtype=int).reshape(-1, 3).tolist()
 
@@ -279,7 +259,7 @@ class AsciiFloat2(AsciiData):
     __slots__ = ()
 
     @classmethod
-    def __readascii__(cls, strings):
+    def __loads__(cls, strings):
 
         return numpy.array(strings, dtype=float).reshape(-1, 2).tolist()
 
@@ -289,7 +269,7 @@ class AsciiFloat3(AsciiData):
     __slots__ = ()
 
     @classmethod
-    def __readascii__(cls, strings):
+    def __loads__(cls, strings):
 
         return numpy.array(strings, dtype=float).reshape(-1, 3).tolist()
 
@@ -299,7 +279,7 @@ class AsciiFloat4(AsciiData):
     __slots__ = ()
 
     @classmethod
-    def __readascii__(cls, strings):
+    def __loads__(cls, strings):
 
         return numpy.array(strings, dtype=float).reshape(-1, 4).tolist()
 
@@ -310,12 +290,12 @@ class AsciiString(AsciiData):
     __default__ = ''
 
     @classmethod
-    def __readascii__(cls, strings):
+    def __loads__(cls, strings):
 
         return [''.join(strings)]
 
     @classmethod
-    def __writeascii__(cls, value):
+    def __dumps__(cls, value):
 
         return f'"{value}"'
 
@@ -341,7 +321,7 @@ class AsciiMatrix(AsciiData):
             return True
 
     @classmethod
-    def __readascii__(cls, strings):
+    def __loads__(cls, strings):
 
         numStrings = len(strings)
         matrix = cls.__default__
@@ -375,7 +355,7 @@ class AsciiMatrix(AsciiData):
         return [matrix]
 
     @classmethod
-    def __writeascii__(cls, value):
+    def __dumps__(cls, value):
 
         if isinstance(value, dict):
 
@@ -406,7 +386,7 @@ class AsciiIntArray(AsciiData):
     __default__ = om.MIntArray()
 
     @classmethod
-    def __readascii__(cls, strings):
+    def __loads__(cls, strings):
 
         sizeHint = int(strings[0])
         array = om.MIntArray(sizeHint, 0)
@@ -418,7 +398,7 @@ class AsciiIntArray(AsciiData):
         return [array]
 
     @classmethod
-    def __writeascii__(cls, value):
+    def __dumps__(cls, value):
 
         numIntegers = len(value)
         integers = ' '.join(map(str, value))
@@ -432,7 +412,7 @@ class AsciiDoubleArray(AsciiData):
     __default__ = om.MDoubleArray()
 
     @classmethod
-    def __readascii__(cls, strings):
+    def __loads__(cls, strings):
 
         sizeHint = int(strings[0])
         array = om.MDoubleArray(sizeHint, 0.0)
@@ -444,7 +424,7 @@ class AsciiDoubleArray(AsciiData):
         return [array]
 
     @classmethod
-    def __writeascii__(cls, value):
+    def __dumps__(cls, value):
 
         numDoubles = len(value)
         doubles = ' '.join(map(str, value))
@@ -458,7 +438,7 @@ class AsciiPointArray(AsciiData):
     __default__ = om.MPointArray()
 
     @classmethod
-    def __readascii__(cls, strings):
+    def __loads__(cls, strings):
 
         sizeHint = int(strings[0])
         array = om.MPointArray(sizeHint, om.MPoint.kOrigin)
@@ -475,7 +455,7 @@ class AsciiPointArray(AsciiData):
         return [array]
 
     @classmethod
-    def __writeascii__(cls, value):
+    def __dumps__(cls, value):
 
         numPoints = len(value)
         points = ' '.join([f'{x.x} {x.y} {x.z} {x.w}' for x in value])
@@ -489,7 +469,7 @@ class AsciiVectorArray(AsciiData):
     __default__ = om.MVectorArray()
 
     @classmethod
-    def __readascii__(cls, strings):
+    def __loads__(cls, strings):
 
         sizeHint = int(strings[0])
         array = om.MVectorArray(sizeHint, om.MVector.kZeroVector)
@@ -505,7 +485,7 @@ class AsciiVectorArray(AsciiData):
         return [array]
 
     @classmethod
-    def __writeascii__(cls, value):
+    def __dumps__(cls, value):
 
         numVectors = len(value)
         vectors = ' '.join([f'{x.x} {x.y} {x.z}' for x in value])
@@ -519,12 +499,12 @@ class AsciiStringArray(AsciiData):
     __default__ = []
 
     @classmethod
-    def __readascii__(cls, strings):
+    def __loads__(cls, strings):
 
         return [strings[1:]]
 
     @classmethod
-    def __writeascii__(cls, value):
+    def __dumps__(cls, value):
 
         numStrings = len(value)
         strings = ' '.join(f'"{x}"' for x in value)
@@ -537,12 +517,12 @@ class AsciiSphere(AsciiData):
     __slots__ = ()
 
     @classmethod
-    def __readascii__(cls, strings):
+    def __loads__(cls, strings):
 
         return [{'radius': float(strings[0])}]
 
     @classmethod
-    def __writeascii__(cls, value):
+    def __dumps__(cls, value):
 
         return str(value['radius'])
 
@@ -552,12 +532,12 @@ class AsciiCone(AsciiData):
     __slots__ = ()
 
     @classmethod
-    def __readascii__(cls, strings):
+    def __loads__(cls, strings):
 
         return [{'angle': float(strings[0]), 'cap': float(strings[1])}]
 
     @classmethod
-    def __writeascii__(cls, value):
+    def __dumps__(cls, value):
 
         return f"{value['angle']} {value['cap']}"
 
@@ -568,12 +548,12 @@ class AsciiAttributeAlias(AsciiData):
     __default__ = {}
 
     @classmethod
-    def __readascii__(cls, strings):
+    def __loads__(cls, strings):
 
         return [{strings[i]: strings[i+1] for i in range(0, len(strings), 2)}]
 
     @classmethod
-    def __writeascii__(cls, value):
+    def __dumps__(cls, value):
 
         return '{{{aliases}}}'.format(aliases=', '.join([f'"{key}", "{value}"' for (key, value) in value.items()]))
 
@@ -584,12 +564,12 @@ class AsciiComponentList(AsciiData):
     __default__ = []
 
     @classmethod
-    def __readascii__(cls, strings):
+    def __loads__(cls, strings):
 
         return [strings[1:]]
 
     @classmethod
-    def __writeascii__(cls, value):
+    def __dumps__(cls, value):
 
         numStrings = len(value)
         strings = ' '.join(f'"{x}"' for x in value)
@@ -602,12 +582,12 @@ class AsciiDataPolyComponent(AsciiData):
     __slots__ = ()
 
     @classmethod
-    def __readascii__(cls, strings):
+    def __loads__(cls, strings):
 
         return [{'type': strings[0], 'component': strings[1], 'index': int(strings[2])}]
 
     @classmethod
-    def __writeascii__(cls, value):
+    def __dumps__(cls, value):
 
         return f"{value['type']} {value['component']} {value['index']}"
 
@@ -617,7 +597,7 @@ class AsciiNurbsCurve(AsciiData):
     __slots__ = ()
 
     @classmethod
-    def __readascii__(cls, strings):
+    def __loads__(cls, strings):
 
         iterator = iter(strings)
         degree = int(next(iterator))
@@ -655,7 +635,7 @@ class AsciiNurbsCurve(AsciiData):
         return [nurbsCurve]
 
     @classmethod
-    def __writeascii__(cls, value):
+    def __dumps__(cls, value):
 
         return '{degree} {spans} {form} {isRational} {dimension} {knotCount} {knots} {cvCount} {cvs}'.format(
             degree=value['degree'],
@@ -676,7 +656,7 @@ class AsciiNurbsSurface(AsciiData):
     __default__ = None
 
     @classmethod
-    def __readascii__(cls, strings):
+    def __loads__(cls, strings):
 
         iterator = iter(strings)
         uDegree = int(next(iterator))
@@ -718,7 +698,7 @@ class AsciiNurbsSurface(AsciiData):
         return [nurbsSurface]
 
     @classmethod
-    def __writeascii__(cls, value):
+    def __dumps__(cls, value):
 
         return '{uDegree} {vDegree} {uForm} {vForm} {spans} {form} {isRational} {dimension} {knotCount} {knots} {cvCount} {cvs}'.format(
             uDegree=value['uDegree'],
@@ -748,7 +728,7 @@ class AsciiMesh(AsciiData):
     }
 
     @classmethod
-    def __readascii__(cls, strings):
+    def __loads__(cls, strings):
 
         iterator = iter(strings)
         meshes = deque()
@@ -775,7 +755,7 @@ class AsciiMesh(AsciiData):
         return meshes
 
     @classmethod
-    def __writeascii__(cls, value):
+    def __dumps__(cls, value):
 
         return ' '.join([f'{key} {len(item)} {" ".join(map(str, item.flatten()))}' for (key, item) in value.items() if item is not None])
 
@@ -795,7 +775,7 @@ class AsciiPolyFaces(AsciiData):
     }
 
     @classmethod
-    def __readascii__(cls, strings, **kwargs):
+    def __loads__(cls, strings, **kwargs):
 
         iterator = iter(strings)
         polyFaces = deque()
@@ -829,7 +809,7 @@ class AsciiPolyFaces(AsciiData):
         return polyFaces
 
     @classmethod
-    def __writeascii__(cls, value):
+    def __dumps__(cls, value):
 
         faceVertexIndices = value['f']
         string = 'f {count} {indices}'.format(count=len(faceVertexIndices), indices=' '.join(map(str, faceVertexIndices)))
@@ -856,7 +836,7 @@ class AsciiLattice(AsciiData):
     __slots__ = ()
 
     @classmethod
-    def __readascii__(cls, strings):
+    def __loads__(cls, strings):
 
         return {
             'sDivisionCount': int(strings[0]),
@@ -866,7 +846,7 @@ class AsciiLattice(AsciiData):
         }
 
     @classmethod
-    def __writeascii__(cls, value):
+    def __dumps__(cls, value):
 
         return '{sDivisionCount} {tDivisionCount} {uDivisionCount} {pointCount} {points}'.format(
             sDivisionCount=value['sDivisionCount'],
