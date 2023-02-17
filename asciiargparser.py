@@ -23,7 +23,7 @@ def state(value):
     :rtype: bool
     """
 
-    return __states__[value.lower()]
+    return __states__.get(value.lower(), False)
 
 
 class AsciiFlagParser(asciibase.AsciiBase):
