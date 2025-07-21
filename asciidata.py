@@ -2,10 +2,10 @@ import numpy
 
 from maya.api import OpenMaya as om
 from abc import ABCMeta, abstractmethod
-from six import with_metaclass
 from collections import deque
-from itertools import islice
-from . import asciibase
+from itertools import islice, chain
+from dcc.collections import sparsearray
+from . import asciibase, asciiattribute
 
 import logging
 logging.basicConfig()
@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class AsciiData(with_metaclass(ABCMeta, asciibase.AsciiBase)):
+class AsciiData(asciibase.AsciiBase, metaclass=ABCMeta):
     """
     Ascii class used to interface with user data.
     """
@@ -37,7 +37,7 @@ class AsciiData(with_metaclass(ABCMeta, asciibase.AsciiBase)):
         # Declare class variables
         #
         self.__attribute__ = attribute.weakReference()
-        self.__value__ = self.defaultValue
+        self.__value__ = self.default()
 
     def __str__(self):
         """
@@ -55,7 +55,7 @@ class AsciiData(with_metaclass(ABCMeta, asciibase.AsciiBase)):
         :rtype: str
         """
 
-        return repr(self.__value__)
+        return f'<{self.className}({self.__value__})>'
 
     @classmethod
     @abstractmethod
@@ -90,23 +90,6 @@ class AsciiData(with_metaclass(ABCMeta, asciibase.AsciiBase)):
         """
 
         return self.__attribute__()
-
-    @property
-    def defaultValue(self):
-        """
-        Returns the default value for this data type.
-        Be sure to overload the default dunderscore property for derived classes!
-
-        :rtype: object
-        """
-
-        if self.attribute.defaultValue is not None:
-
-            return self.attribute.defaultValue
-
-        else:
-
-            return self.__default__
     # endregion
 
     # region Methods
@@ -117,7 +100,28 @@ class AsciiData(with_metaclass(ABCMeta, asciibase.AsciiBase)):
         :rtype: bool
         """
 
-        return not self.isEquivalent(self.defaultValue)
+        return not self.isEquivalent(self.default())
+
+    def default(self):
+        """
+        Returns the default value for this data type.
+
+        :rtype: Any
+        """
+
+        classDefault = self.__class__.__default__
+        userDefault = self.attribute.defaultValue
+        default = userDefault if userDefault is not None else classDefault
+
+        cls = type(default)
+
+        if callable(cls) and default is not None:
+
+            return cls(default)
+
+        else:
+
+            return default
 
     def isEquivalent(self, other):
         """
@@ -153,8 +157,8 @@ class AsciiData(with_metaclass(ABCMeta, asciibase.AsciiBase)):
         """
         Evaluates the supplied ascii string.
 
-        :type strings: list[str]
-        :rtype: list[Any]
+        :type strings: List[str]
+        :rtype: List[Any]
         """
 
         return cls.__loads__(strings)
@@ -186,27 +190,56 @@ class AsciiGeneric(AsciiData):
         return ''
 
 
-class AsciiNumber(with_metaclass(ABCMeta, AsciiData)):
+class AsciiNumericData(AsciiData, metaclass=ABCMeta):
 
     __slots__ = ()
-    __dtype__ = None
+    __data_type__ = None
+    __size__ = 0
+
+    def __getitem__(self, index):
+
+        return self.__value__[index]
+
+    def __setitem__(self, index, value):
+
+        self.__value__[index] = value
 
     @classmethod
     def __loads__(cls, strings):
 
-        return numpy.array(strings, dtype=cls.__dtype__).tolist()
+        if cls.__size__ == 0:
+
+            return None
+
+        elif cls.__size__ == 1:
+
+            return numpy.array(strings, dtype=cls.__data_type__).tolist()
+
+        else:
+
+            return numpy.array(strings, dtype=cls.__data_type__).reshape(-1, cls.__size__).tolist()
 
     @classmethod
     def __dumps__(cls, value):
 
-        return str(value)
+        if cls.__size__ == 0:
+
+            return ''
+
+        elif cls.__size__ == 1:
+
+            return str(value)
+
+        else:
+
+            return ' '.join(value)
 
 
-class AsciiBool(AsciiNumber):
+class AsciiBool(AsciiNumericData):
 
     __slots__ = ()
     __states__ = {'on': True, 'yes': True, 'true': True}
-    __dtype__ = bool
+    __data_type__ = bool
     __default__ = False
 
     @classmethod
@@ -220,68 +253,55 @@ class AsciiBool(AsciiNumber):
         return str(value).lower()
 
 
-class AsciiInt(AsciiNumber):
+class AsciiInt(AsciiNumericData):
 
     __slots__ = ()
-    __dtype__ = int
+    __data_type__ = int
+    __size__ = 1
     __default__ = 0
 
 
-class AsciiInt2(AsciiData):
+class AsciiInt2(AsciiInt):
 
     __slots__ = ()
-
-    @classmethod
-    def __loads__(cls, strings):
-
-        return numpy.array(strings, dtype=int).reshape(-1, 2).tolist()
+    __size__ = 2
+    __default__ = [0, 0]
 
 
-class AsciiInt3(AsciiData):
+class AsciiInt3(AsciiInt):
 
     __slots__ = ()
-
-    @classmethod
-    def __loads__(cls, strings):
-
-        return numpy.array(strings, dtype=int).reshape(-1, 3).tolist()
+    __size__ = 3
+    __default__ = [0, 0, 0]
 
 
-class AsciiFloat(AsciiNumber):
+class AsciiFloat(AsciiNumericData):
 
     __slots__ = ()
-    __type__ = float
+    __data_type__ = float
+    __size__ = 1
     __default__ = 0.0
 
 
-class AsciiFloat2(AsciiData):
+class AsciiFloat2(AsciiFloat):
 
     __slots__ = ()
-
-    @classmethod
-    def __loads__(cls, strings):
-
-        return numpy.array(strings, dtype=float).reshape(-1, 2).tolist()
+    __size__ = 2
+    __default__ = [0.0, 0.0, 0.0]
 
 
-class AsciiFloat3(AsciiData):
+class AsciiFloat3(AsciiFloat):
 
     __slots__ = ()
-
-    @classmethod
-    def __loads__(cls, strings):
-
-        return numpy.array(strings, dtype=float).reshape(-1, 3).tolist()
+    __size__ = 3
+    __default__ = [0.0, 0.0, 0.0]
 
 
-class AsciiFloat4(AsciiData):
+class AsciiFloat4(AsciiFloat):
 
     __slots__ = ()
-
-    @classmethod
-    def __loads__(cls, strings):
-
-        return numpy.array(strings, dtype=float).reshape(-1, 4).tolist()
+    __size__ = 4
+    __default__ = [0.0, 0.0, 0.0, 0.0]
 
 
 class AsciiString(AsciiData):
@@ -303,7 +323,12 @@ class AsciiString(AsciiData):
 class AsciiMatrix(AsciiData):
 
     __slots__ = ()
-    __default__ = om.MMatrix.kIdentity
+    __default__ = [
+        [1.0, 0.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0]
+    ]
 
     @property
     def isTransformation(self):
@@ -314,7 +339,7 @@ class AsciiMatrix(AsciiData):
 
         if not self.isTransformation:
 
-            return not self.__default__.isEquivalent(self.__value__)
+            return self.__value__ == self.__class__.__default__
 
         else:
 
@@ -324,27 +349,27 @@ class AsciiMatrix(AsciiData):
     def __loads__(cls, strings):
 
         numStrings = len(strings)
-        matrix = cls.__default__
+        matrix = None
 
         if numStrings == 16:
 
-            matrix = om.MMatrix(numpy.array(strings, dtype=float))
+            matrix = numpy.array(strings, dtype=float).reshape(4, 4).tolist()
 
         elif numStrings == 38:
 
             matrix = {
-                'scale': numpy.array(strings[1:4]).astype(numpy.float),
-                'rotate': numpy.array(strings[4:7]).astype(numpy.float),
+                'scale': numpy.array(strings[1:4]).astype(float),
+                'rotate': numpy.array(strings[4:7]).astype(float),
                 'rotateOrder': int(strings[7]),
-                'translate': numpy.array(strings[8:11]).astype(numpy.float),
-                'shear': numpy.array(strings[11:14]).astype(numpy.float),
-                'scalePivot': numpy.array(strings[14:17]).astype(numpy.float),
-                'scalePivotTranslate': numpy.array(strings[17:20]).astype(numpy.float),
-                'rotatePivot': numpy.array(strings[20:23]).astype(numpy.float),
-                'rotatePivotTranslate': numpy.array(strings[23:26]).astype(numpy.float),
-                'rotateOrient': numpy.array(strings[26:30]).astype(numpy.float),
-                'jointOrient': numpy.array(strings[30:34]).astype(numpy.float),
-                'inverseParentScale': numpy.array(strings[34:37]).astype(numpy.float),
+                'translate': numpy.array(strings[8:11]).astype(float),
+                'shear': numpy.array(strings[11:14]).astype(float),
+                'scalePivot': numpy.array(strings[14:17]).astype(float),
+                'scalePivotTranslate': numpy.array(strings[17:20]).astype(float),
+                'rotatePivot': numpy.array(strings[20:23]).astype(float),
+                'rotatePivotTranslate': numpy.array(strings[23:26]).astype(float),
+                'rotateOrient': numpy.array(strings[26:30]).astype(float),
+                'jointOrient': numpy.array(strings[30:34]).astype(float),
+                'inverseParentScale': numpy.array(strings[34:37]).astype(float),
                 'compensateForParentScale': bool(strings[37])
             }
 
@@ -377,7 +402,7 @@ class AsciiMatrix(AsciiData):
 
         else:
 
-            return ' '.join(map(str, value))
+            return ' '.join(map(str, chain(*value)))
 
 
 class AsciiIntArray(AsciiData):
@@ -528,6 +553,9 @@ class AsciiSphere(AsciiData):
 
 
 class AsciiCone(AsciiData):
+    """
+    Overload of `AsciiData` that interfaces with cone data.
+    """
 
     __slots__ = ()
 
@@ -720,7 +748,7 @@ class AsciiMesh(AsciiData):
 
     __slots__ = ()
 
-    __meshtypes__ = {
+    __mesh_types__ = {
         'v': lambda x: numpy.array(tuple(islice(x, int(next(x)) * 3)), dtype=int).reshape((-1, 3)),
         'vn': lambda x: numpy.array(tuple(islice(x, int(next(x)) * 3)), dtype=int).reshape((-1, 3)),
         'vt': lambda x: numpy.array(tuple(islice(x, int(next(x)) * 2)), dtype=int).reshape((-1, 2)),
@@ -745,7 +773,7 @@ class AsciiMesh(AsciiData):
                     mesh = {'v': None, 'vn': None, 'vt': None, 'e': None}
                     meshes.append(mesh)
 
-                func = cls.__meshtypes__[key]
+                func = cls.__mesh_types__[key]
                 mesh[key] = func(iterator)
 
             except StopIteration:
@@ -767,7 +795,7 @@ class AsciiPolyFaces(AsciiData):
 
     __slots__ = ()
 
-    __polyfacetypes__ = {
+    __poly_face_types__ = {
         'f': lambda x: numpy.array(tuple(islice(x, int(next(x)))), dtype=int),
         'h': lambda x: numpy.array(tuple(islice(x, int(next(x)))), dtype=int),
         'mu': lambda x: numpy.array(tuple(islice(x, int(next(x)))), dtype=int),
@@ -786,7 +814,7 @@ class AsciiPolyFaces(AsciiData):
             try:
 
                 key = next(iterator)
-                func = cls.__polyfacetypes__[key]
+                func = cls.__poly_face_types__[key]
 
                 if key == 'f':
 
@@ -842,7 +870,7 @@ class AsciiLattice(AsciiData):
             'sDivisionCount': int(strings[0]),
             'tDivisionCount': int(strings[1]),
             'uDivisionCount': int(strings[2]),
-            'points': numpy.array(strings[4:]).astype(numpy.float).reshape(1, 3)
+            'points': numpy.array(strings[4:]).astype(float).reshape(1, 3)
         }
 
     @classmethod
@@ -857,7 +885,63 @@ class AsciiLattice(AsciiData):
         )
 
 
-__datatypes__ = {
+class AsciiCompound(AsciiData):
+
+    def __init__(self, attribute, **kwargs):
+
+        super(AsciiCompound, self).__init__(attribute, **kwargs)
+
+        for attribute in self.attribute.children:
+
+            if attribute.multi:
+
+                self.__value__[attribute.shortName] = sparsearray.SparseArray()
+
+            else:
+
+                cls = getDataType(attribute)
+                self.__value__[attribute.shortName] = cls(attribute)
+
+    def __getitem__(self, key):
+
+        if isinstance(key, str):
+
+            return self.__value__[key]
+
+        elif isinstance(key, int):
+
+            return self.__getitem__(tuple(self.__value__.keys())[key])
+
+        else:
+
+            raise KeyError(f'__getitem__() expects a string or int ({type(key).__name__} given)!')
+
+    @classmethod
+    def __loads__(cls, value):
+        """
+        Returns the python equivalent of this ascii string.
+
+        :rtype: Any
+        """
+
+        return {}  # There is no syntax for deserializing compound values!
+
+    @classmethod
+    def __dumps__(cls, value):
+        """
+        Returns the ascii equivalent of this python object.
+
+        :rtype: str
+        """
+
+        return ''  # There is no syntax for serializing compound values!
+
+    def default(self):
+
+        return dict.fromkeys(tuple(attribute.shortName for attribute in self.attribute.iterChildren()), None)
+
+
+__data_types__ = {
     'bool': AsciiBool,
     'boolean': AsciiBool,
     'enum': AsciiInt,
@@ -902,7 +986,9 @@ __datatypes__ = {
     'nurbsTrimface': None,  # TODO: Implement this nightmare...
     'mesh': AsciiMesh,
     'polyFaces': AsciiPolyFaces,
-    'lattice': AsciiLattice
+    'lattice': AsciiLattice,
+    'compound': AsciiCompound,
+    'typed': AsciiGeneric
 }
 
 
@@ -916,11 +1002,22 @@ def getDataType(attribute):
 
     # Check if this is a typed attribute
     #
+    cls = None
+
     if attribute.isTyped:
 
-        return __datatypes__.get(attribute.dataType, AsciiGeneric)
+        cls = __data_types__.get(attribute.dataType, None)
 
     else:
 
-        return __datatypes__.get(attribute.attributeType, AsciiGeneric)
+        cls = __data_types__.get(attribute.attributeType, None)
 
+    # Check if type is valid
+    #
+    if callable(cls):
+
+        return cls
+
+    else:
+
+        raise NotImplementedError(f'getDataType() unable to locate data type: {attribute.attributeType}')

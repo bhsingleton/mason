@@ -1,7 +1,6 @@
 from maya.api import OpenMaya as om
-
+from dcc.collections import hashtable, weakreflist, notifylist
 from . import asciitreemixin, asciiargparser, asciidata
-from .collections import hashtable, weakreflist, notifylist
 
 import logging
 logging.basicConfig()
@@ -125,7 +124,7 @@ class AsciiAttribute(asciitreemixin.AsciiTreeMixin):
 
         else:
 
-            raise TypeError(f'parent.setter() expects a AsciiObject ({type(parent).__name__} given)!')
+            raise TypeError(f'parent.setter() expects an AsciiAttribute ({type(parent).__name__} given)!')
 
         # Cleanup any old references
         #
@@ -673,7 +672,7 @@ class AsciiAttribute(asciitreemixin.AsciiTreeMixin):
         return self.hasMinValue or self.hasMaxValue
     # endregion
 
-    # region Methods
+    # region Callbacks
     def parentChanged(self, oldParent, newParent):
         """
         Callback method that cleans up any parent/child references.
@@ -715,7 +714,9 @@ class AsciiAttribute(asciitreemixin.AsciiTreeMixin):
         """
 
         child.parent = None
+    # endregion
 
+    # region Methods
     def update(self, items):
         """
         Copies any properties from the supplied items.

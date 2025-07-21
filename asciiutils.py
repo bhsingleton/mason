@@ -25,7 +25,7 @@ def createNewScene(destination):
     Copies the untitled scene file to the specified location.
 
     :type destination: str
-    :rtype: None
+    :rtype: str
     """
 
     try:

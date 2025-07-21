@@ -34,19 +34,11 @@ class AsciiFileParser(object):
         #
         self.filePath = filePath
         self.scene = asciiscene.AsciiScene(self.filePath)
-        self.__parse__()
-        '''
-        # Parse file
+
+        # Parse file contents
         #
-        try:
+        self.__parse__()
 
-            self.__parse__()
-
-        except Exception as exception:
-
-            log.error(exception)
-
-        '''
     @timer
     def __parse__(self, *args, **kwargs):
         """
@@ -72,6 +64,8 @@ class AsciiFileParser(object):
                 line = asciiFile.readline().strip(self.__escapechars__)
                 numChars = len(line)
 
+                lineNumber += 1
+
                 if numChars == 0:
 
                     break
@@ -80,7 +74,6 @@ class AsciiFileParser(object):
                 #
                 if line.startswith(self.__comment__):
 
-                    lineNumber += 1
                     continue
 
                 # Concatenate command line
@@ -90,8 +83,8 @@ class AsciiFileParser(object):
                 while not buffer.endswith(self.__delimiter__):
 
                     line = asciiFile.readline().strip(self.__escapechars__)
-
                     buffer += f' {line}'
+
                     lineNumber += 1
 
                 # Call command delegate
@@ -99,12 +92,8 @@ class AsciiFileParser(object):
                 parser = asciiargparser.AsciiArgParser(buffer)
                 func = getattr(self.__class__, parser.name)
 
-                log.info(f'Line[{lineNumber}]: {buffer}')
+                log.debug(f'Line[{lineNumber}]: {buffer}')
                 func(self, parser)
-
-                # Increment line number
-                #
-                lineNumber += 1
 
         # Notify user
         #
@@ -241,7 +230,7 @@ class AsciiFileParser(object):
 
         # Create dynamic attribute
         #
-        attribute = asciiattribute.AsciiAttribute(parser, dynamic=True)
+        attribute = asciiattribute.AsciiAttribute(parser, dynamic=True)  # All `addAttrs` are related to dynamic attributes!
 
         # Check if attribute has parent
         #
@@ -304,9 +293,8 @@ class AsciiFileParser(object):
             plugs[0].size = size
 
         # Check if there are any arguments
-        # Be sure to not to count the plug name!
         #
-        numArguments = parser.numArguments - 1
+        numArguments = parser.numArguments - 1  # Make sure not to count the plug name!
 
         if numArguments > 0:
 
@@ -323,7 +311,7 @@ class AsciiFileParser(object):
 
             else:
 
-                log.error(f'Unable to set attribute {name}!')
+                raise TypeError(f'setAttr() plug-value size mismatch found @ {name}!')
 
     def connectAttr(self, parser):
         """

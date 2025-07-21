@@ -1,7 +1,6 @@
-import maya.api.OpenMaya as om
-
-from . import asciitreemixin, asciiattribute, asciiplug
-from .collections import hashtable, weakreflist, notifylist
+from maya.api import OpenMaya as om
+from dcc.collections import hashtable, weakreflist, notifylist
+from . import asciitreemixin, asciiattribute, asciiplug, asciidatablock
 
 import logging
 logging.basicConfig()
@@ -26,8 +25,8 @@ class AsciiNode(asciitreemixin.AsciiTreeMixin):
         '_locked',
         '_default',
         '_attributes',
+        '_dataBlock',
         '_plugs',
-        '_database',
         '_connections'
     )
 
@@ -57,6 +56,7 @@ class AsciiNode(asciitreemixin.AsciiTreeMixin):
         self._children = notifylist.NotifyList(cls=weakreflist.WeakRefList)
         self._locked = False
         self._attributes = hashtable.HashTable()  # Used for dynamic attributes
+        self._dataBlock = asciidatablock.AsciiDataBlock(self)
         self._plugs = hashtable.HashTable()
         self._connections = []
         self._default = kwargs.get('default', False)
@@ -231,6 +231,7 @@ class AsciiNode(asciitreemixin.AsciiTreeMixin):
         # Check for redundancy
         #
         if parent is self.parent:
+
             log.debug(f'{self} is already parented to: {parent}')
             return
 
@@ -245,6 +246,10 @@ class AsciiNode(asciitreemixin.AsciiTreeMixin):
         elif isinstance(parent, str):
 
             self.parent = self.scene.registry.getNodeByName(parent)
+
+        elif isinstance(parent, om.MUuid):
+
+            self.parent = self.scene.registry.getNodeByUUID(parent)
 
         elif parent is None:
 
@@ -339,14 +344,14 @@ class AsciiNode(asciitreemixin.AsciiTreeMixin):
         return self._default
 
     @property
-    def database(self):
+    def dataBlock(self):
         """
         Getter method that returns the database for this node.
 
-        :rtype: asciidatabase.AsciiDatabase
+        :rtype: asciidatablock.AsciiDataBlock
         """
 
-        return self._database
+        return self._dataBlock
 
     @property
     def plugs(self):
@@ -507,7 +512,7 @@ class AsciiNode(asciitreemixin.AsciiTreeMixin):
 
     def iterTopLevelPlugs(self):
         """
-        Iterates through all of the top-level plugs.
+        Returns a generator that yields top-level plugs.
         Please note that plugs are created on demand so don't expect a complete list from this generator!
 
         :rtype: iter
@@ -590,7 +595,7 @@ class AsciiNode(asciitreemixin.AsciiTreeMixin):
         Adds a dynamic attribute to this node.
         This function accepts two different sets of arguments.
         You can either supply a fully formed AsciiAttribute.
-        Or you can pass all of the keywords required to create one.
+        Or you can pass all the required keyword arguments to create one.
 
         :rtype: None
         """

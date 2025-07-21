@@ -3,9 +3,8 @@ import re
 from enum import IntEnum
 from itertools import chain
 from collections import namedtuple
-
-from . import asciitreemixin, asciiattribute, asciidata
-from .collections import sparsearray
+from dcc.collections import sparsearray
+from . import asciitreemixin, asciiattribute, asciidatablock
 
 import logging
 logging.basicConfig()
@@ -16,8 +15,6 @@ log.setLevel(logging.INFO)
 class AsciiPlug(asciitreemixin.AsciiTreeMixin):
     """
     Ascii class used to interface with attribute plugs.
-    The child plugs are populated based on the attribute definition.
-    Editing the child arrays will result in unpredictable behaviour!
     """
 
     # region Dunderscores
@@ -28,7 +25,6 @@ class AsciiPlug(asciitreemixin.AsciiTreeMixin):
         '_parent',
         '_elements',
         '_children',
-        '_dataBlock',
         '_locked',
         '_keyable',
         '_channelBox',
@@ -59,7 +55,6 @@ class AsciiPlug(asciitreemixin.AsciiTreeMixin):
         self._index = kwargs.get('index', None)
         self._parent = kwargs.get('parent', self.nullWeakReference)
         self._children = []
-        self._dataBlock = None
         self._locked = False
         self._keyable = attribute.keyable
         self._channelBox = attribute.channelBox
@@ -78,8 +73,7 @@ class AsciiPlug(asciitreemixin.AsciiTreeMixin):
 
         else:
 
-            dataType = asciidata.getDataType(attribute)
-            self._dataBlock = dataType(attribute) if callable(dataType) else None
+            pass
 
     def __str__(self):
         """
@@ -133,10 +127,6 @@ class AsciiPlug(asciitreemixin.AsciiTreeMixin):
         elif isinstance(key, slice):
 
             return [self.__getitem__(i) for i in range(key.start, key.stop + 1, 1)]  # Return range of plugs
-
-        elif key is None:
-
-            return self  # This is here purely for laziness...
 
         else:
 
@@ -361,6 +351,7 @@ class AsciiPlug(asciitreemixin.AsciiTreeMixin):
             current = self.numElements
 
             for index in range(current, size, 1):
+
                 self._elements[index] = AsciiPlug(self.node, self.attribute, index=index, parent=self.weakReference())
 
         elif self.isElement:
@@ -581,6 +572,25 @@ class AsciiPlug(asciitreemixin.AsciiTreeMixin):
 
                 self.disconnect(otherPlug)
 
+    def position(self):
+        """
+        Returns the index of this plug relative to its parent.
+
+        :rtype: int
+        """
+
+        if self.isArray and self.isElement:
+
+            return self.logicalIndex
+
+        elif self.isChild:
+
+            return self.parent.children.index(self)
+
+        else:
+
+            return None
+
     def child(self, index):
         """
         Returns a child from this plug.
@@ -687,44 +697,29 @@ class AsciiPlug(asciitreemixin.AsciiTreeMixin):
 
         return self._elements.nextAvailableIndex()
 
+    def constructHandle(self):
+        """
+        Returns a data handle that points to the value this plug is associated with.
+
+        :rtype: asciidatablock.AsciiDataHandle
+        """
+
+        return self.node.dataBlock.constructHandle(self)
+
     def getValue(self):
         """
-        Updates the value associated with this plug.
+        Returns the value associated with this plug.
 
         :rtype: Any
         """
 
-        # Evaluate plug type
-        #
-        if self.isArray and not self.isElement:
+        if self.isConnected:
 
-            # Check if elements are sequential
-            #
-            if self.isSequential:
-
-                return [x.getValue() for x in self._elements.values()]
-
-            else:
-
-                return {x: y.getValue for (x, y) in self._elements.items()}
-
-        elif self.isCompound:
-
-            # Check if this is a non-numeric compound attribute
-            #
-            if self.attribute.attributeType == 'compound':
-
-                return {x.attribute.longName: x.getValue() for x in self._children}
-
-            else:
-
-                return [x.getValue() for x in self._children]
+            return self.source().getValue()
 
         else:
 
-            # Return value from data block
-            #
-            return self._dataBlock.get()
+            return self.constructHandle().get()
 
     def setValue(self, value):
         """
@@ -734,59 +729,16 @@ class AsciiPlug(asciitreemixin.AsciiTreeMixin):
         :rtype: None
         """
 
-        # Evaluate plug type
-        #
-        if self.isArray and not self.isElement:
+        if not self.isConnected:
 
-            # Check value type
-            #
-            if isinstance(value, (list, tuple)):
-
-                for (index, item) in enumerate(value):
-
-                    element = self.elementByLogicalIndex(index)
-                    element.setValue(item)
-
-            elif isinstance(value, dict):
-
-                for (index, item) in value.items():
-
-                    element = self.elementByLogicalIndex(index)
-                    element.setValue(item)
-
-            else:
-
-                raise TypeError('setValue() expects a list of values for array plugs!')
-
-        elif self.isCompound:
-
-            # Check if there are enough items
-            #
-            numItems = len(value)
-
-            if self.numberOfChildren == numItems:
-
-                for (child, item) in zip(self._children, value):
-
-                    child.setValue(item)
-
-            else:
-
-                raise TypeError('setValue() mismatch found between number of values and plugs!')
-
-        else:
-
-            # Assign value to data block
-            #
-            self._dataBlock.set(value)
-            log.debug(f'{self.name} = {self._dataBlock}')
+            self.constructHandle().set(value)
 
     def getSetAttrCmds(self, nonDefault=True):
         """
         Returns a list of command strings that can recreate any changes made to this plug.
 
         :type nonDefault: bool
-        :rtype: list[str]
+        :rtype: List[str]
         """
 
         # Check if plug is storable
@@ -889,16 +841,16 @@ AsciiPlugType = IntEnum('AsciiPlugType', ['kSingle', 'kArray', 'kCompoundArray']
 
 class AsciiPlugPath(object):
     """
-    Ascii class used to evaluate plug paths for hassle free lookups.
+    Ascii class used to evaluate plug paths for hassle-free lookups.
     This class expects the following string format: {nodeName}.{attributeName} etc
     Omitting the node name will force the parser to use the active selection!
-    To my knowledge there are 3 forms of plug path syntax:
+    To my knowledge there are 3 forms of syntax for plug paths:
         kSingle: Represents a single plug -> .translate.translateX
         kArray: Represents an array of plugs using a slice object -> .points[0:24]
-        kCompoundArray: Represents an array of compound plugs using a slice object -> .weightList[0:24].weights
-    Who knows there may be more???
+        kCompoundArray: Represents a 2-dimensional array of compound plugs using a slice object -> .weightList[0:24].weights
     """
 
+    # region Dunderscores
     __slots__ = ('_scene', '_node', '_segments', '_cache')
     __syntax__ = re.compile(r'([a-zA-Z0-9_]+)(?:\[{1}([:0-9]*)\]{1})?')
 
@@ -994,7 +946,9 @@ class AsciiPlugPath(object):
         """
 
         return len(self._segments)
+    # endregion
 
+    # region Properties
     @property
     def scene(self):
         """
@@ -1014,7 +968,9 @@ class AsciiPlugPath(object):
         """
 
         return self._node()
+    # endregion
 
+    # region Methods
     def type(self):
         """
         Evaluates the path type.

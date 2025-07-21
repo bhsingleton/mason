@@ -4,7 +4,6 @@ from maya import cmds as mc
 from maya.api import OpenMaya as om
 from datetime import datetime
 from collections import deque, namedtuple, defaultdict
-
 from . import asciibase, asciiargparser, asciinode
 
 import logging
@@ -236,9 +235,9 @@ class AsciiRegistry(object):
 
 class AsciiScene(asciibase.AsciiBase):
     """
-    Overload of AsciiBase used to interface with the ascii scene file.
-    All runtime commands are executed from the ascii file parser.
-    At this time there is very little support for relationships or namespaces.
+    Overload of `AsciiBase` that interfaces with the ascii scene files.
+    All runtime commands are called from the ascii file parser.
+    At this time there is very little support for relationships or namespaces!
     """
 
     # region Dunderscores
@@ -308,7 +307,7 @@ class AsciiScene(asciibase.AsciiBase):
         Returns a list of command line strings that can be serialized.
         TODO: There's a bug where calling 'saveAs' with a different filename will not reflect in the file header.
 
-        :rtype: list[str]
+        :rtype: List[str]
         """
 
         # Concatenate file header
@@ -327,6 +326,7 @@ class AsciiScene(asciibase.AsciiBase):
         commands.extend(self.getRequiresCmds())
         commands.append(self.getCurrentUnitCmd())
         commands.extend(self.getFileInfoCmds())
+        # commands.extend(self.getFileCmds())
 
         # Append commands from user created nodes
         #
@@ -473,7 +473,7 @@ class AsciiScene(asciibase.AsciiBase):
         """
         Getter method that returns a list of top level nodes.
 
-        :rtype: list[asciinode.AsciiNode]
+        :rtype: List[asciinode.AsciiNode]
         """
 
         return list(self.iterNodes())
@@ -482,7 +482,7 @@ class AsciiScene(asciibase.AsciiBase):
         """
         Returns a generator that can iterate through all of the top level nodes.
 
-        :rtype: iter
+        :rtype: Iterator[asciinode.AsciiNode]
         """
 
         return self.registry.iterTopLevelNodes()
@@ -492,7 +492,7 @@ class AsciiScene(asciibase.AsciiBase):
         Walks through the entire ascii tree.
         Be warned this can be an expensive operation depending on the file size!
 
-        :rtype: iter
+        :rtype: Iterator[asciinode.AsciiNode]
         """
 
         return self.registry.walk()
@@ -501,7 +501,7 @@ class AsciiScene(asciibase.AsciiBase):
         """
         Returns a node associated with the given dag path.
 
-        :type dagPath: list[str]
+        :type dagPath: List[str]
         :rtype: asciinode.AsciiNode
         """
 
@@ -561,7 +561,7 @@ class AsciiScene(asciibase.AsciiBase):
         Returns a list of nodes that are derived from the given type name.
 
         :type nodeType: str
-        :rtype: list[asciinode.AsciiNode]
+        :rtype: List[asciinode.AsciiNode]
         """
 
         return list(self.registry.iterNodesByType(nodeType))
@@ -690,7 +690,7 @@ class AsciiScene(asciibase.AsciiBase):
         """
         Returns a list of command strings that can recreate the current scene info.
 
-        :rtype: list[str]
+        :rtype: List[str]
         """
 
         return [f'fileInfo "{key}" "{value}";' for (key, value) in self.fileInfo.items()]
@@ -698,8 +698,9 @@ class AsciiScene(asciibase.AsciiBase):
     def getFileCmds(self):
         """
         Returns a list of command strings that can recreate the scene references.
+        TODO: Add support for referenced files!
 
-        :rtype: list[str]
+        :rtype: List[str]
         """
 
         return []

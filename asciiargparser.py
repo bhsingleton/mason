@@ -127,8 +127,8 @@ class AsciiFlagParser(asciibase.AsciiBase):
 class AsciiArgParser(asciibase.AsciiBase):
     """
     Ascii class used to translate Maya command arguments.
-    Using regex is way faster than the shlex module's split method!
-    All arguments are dequoted at runtime.
+    This parser uses regex, rather than shlex, for splitting commandline arguments since it's way faster!
+    All arguments are dequoted at runtime!
     """
 
     # region Dunderscores
@@ -409,7 +409,7 @@ class AsciiArgParser(asciibase.AsciiBase):
 
     def package(self, path):
         """
-        Groups the arguments together based on the supplied attribute.
+        Groups the arguments together based on the supplied plug path.
 
         :type path: mason.asciiplug.AsciiPlugPath
         :rtype: list[Any]
@@ -422,7 +422,7 @@ class AsciiArgParser(asciibase.AsciiBase):
         if pathType == AsciiPlugType.kSingle or pathType == AsciiPlugType.kArray:
 
             # Check if this is a compound attribute
-            # I found an edge case for vertex colours
+            # Turns out there's an obscure edge case for vertex colours!
             #
             attribute = path[-1].attribute()
             dataType = attribute.getDataType()
@@ -438,7 +438,7 @@ class AsciiArgParser(asciibase.AsciiBase):
         elif pathType == AsciiPlugType.kCompoundArray:
 
             # Organize array element arguments
-            # This syntax is mostly used for skin weights
+            # This syntax is mostly used for skin weights!
             #
             return self.asArray(sizeHint=path.sizeHint())
 

@@ -1,7 +1,5 @@
 from abc import ABCMeta, abstractmethod
-from six import with_metaclass
 from collections import deque
-
 from . import asciibase
 
 import logging
@@ -10,9 +8,9 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class AsciiTreeMixin(with_metaclass(ABCMeta, asciibase.AsciiBase)):
+class AsciiTreeMixin(asciibase.AsciiBase, metaclass=ABCMeta):
     """
-    Overload of AsciiBase used to outline parent/child behaviour.
+    Overload of `AsciiBase` that outlines parent/child behaviour.
     """
 
     # region Dunderscores
@@ -131,12 +129,19 @@ class AsciiTreeMixin(with_metaclass(ABCMeta, asciibase.AsciiBase)):
     # endregion
 
     # region Methods
-    def iterParents(self):
+    def iterParents(self, includeSelf=False):
         """
         Returns a generator that can iterate over all of the parents relative to this object.
 
+        :type includeSelf: bool
         :rtype: iter
         """
+
+        # Check if self should be included
+        #
+        if includeSelf:
+
+            yield self
 
         # Walk up hierarchy
         #
@@ -164,27 +169,17 @@ class AsciiTreeMixin(with_metaclass(ABCMeta, asciibase.AsciiBase)):
         :rtype: bool
         """
 
-        return self.parent is self
+        return self.parent is None
 
-    def home(self):
-        """
-        Returns a generator that can walk home from this object.
-        Unlike iterParents this generator yields itself.
-
-        :rtype: iter
-        """
-
-        yield self
-        yield from self.iterParents()
-
-    def trace(self):
+    def trace(self, includeSelf=True):
         """
         Returns a generator that can retrace the hierarchy to this object.
 
+        :type includeSelf: bool
         :rtype: iter
         """
 
-        return reversed(list(self.home()))
+        return reversed(tuple(self.iterParents(includeSelf=includeSelf)))
 
     def iterChildren(self):
         """
@@ -228,5 +223,5 @@ class AsciiTreeMixin(with_metaclass(ABCMeta, asciibase.AsciiBase)):
         :rtype: int
         """
 
-        return len(list(self.home()))
+        return len(tuple(self.iterParents(includeSelf=True)))
     # endregion

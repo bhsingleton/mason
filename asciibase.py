@@ -1,8 +1,6 @@
-import re
 import weakref
 
 from abc import ABCMeta, abstractmethod
-from six import with_metaclass
 from .decorators import classproperty
 
 import logging
@@ -11,7 +9,7 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-class AsciiBase(with_metaclass(ABCMeta, object)):
+class AsciiBase(object, metaclass=ABCMeta):
     """
     Abstract base class used for all Ascii objects.
     """
