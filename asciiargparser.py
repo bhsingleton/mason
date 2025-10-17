@@ -12,7 +12,14 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
 
-__states__ = {'on': True, 'yes': True, 'true': True}
+__states__ = {
+    'on': True,
+    'off': False,
+    'yes': True,
+    'no': False,
+    'true': True,
+    'false': False
+}
 
 
 def state(value):
@@ -468,7 +475,7 @@ class AsciiArgParser(asciibase.AsciiBase):
 
     def asInt(self, index):
         """
-        Returns all integer arguments as flat array.
+        Returns an indexed argument as an integer.
 
         :type index: int
         :rtype: int
@@ -478,7 +485,7 @@ class AsciiArgParser(asciibase.AsciiBase):
 
     def asFloat(self, index):
         """
-        Returns an float argument as a flat array.
+        Returns an indexed argument as an float.
 
         :type index: int
         :rtype: float
